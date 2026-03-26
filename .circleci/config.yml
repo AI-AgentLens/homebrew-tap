@@ -1,0 +1,13 @@
+version: 2.1
+
+jobs:
+  noop:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - run: echo "Homebrew tap — no CI needed"
+
+workflows:
+  skip:
+    jobs:
+      - noop
