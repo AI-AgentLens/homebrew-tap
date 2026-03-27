@@ -2,8 +2,8 @@ version: 2.1
 
 jobs:
   noop:
-    docker:
-      - image: cimg/base:current
+    machine: true
+    resource_class: aiagentlens/local
     steps:
       - run: echo "Homebrew tap — no CI needed"
 
