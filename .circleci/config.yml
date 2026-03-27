@@ -2,10 +2,10 @@ version: 2.1
 
 jobs:
   noop:
-    machine: true
-    resource_class: aiagentlens/local
+    docker:
+      - image: cimg/base:current
     steps:
-      - run: echo "Homebrew tap — no CI needed"
+      - run: echo "Migrated to GitHub Actions"
 
 workflows:
   skip:
