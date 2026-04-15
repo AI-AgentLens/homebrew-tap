@@ -2,7 +2,7 @@ cask "agentshield" do
   name "agentshield"
   desc "Runtime security gateway and compliance scanner for LLM agents"
   homepage "https://aiagentlens.com"
-  version "0.2.589"
+  version "0.2.590"
 
   livecheck do
     skip "Auto-updated by CI on release."
@@ -13,23 +13,23 @@ cask "agentshield" do
 
   on_macos do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.589/agentshield_0.2.589_darwin_amd64.tar.gz"
-      sha256 "51ae27816669a87ae6a530541373e07399eee010fe1f00df2a1b87c3651b5ab5"
+      url "https://aiagentlens.com/releases/v0.2.590/agentshield_0.2.590_darwin_amd64.tar.gz"
+      sha256 "f51707f93871ae1827ac05760998ee2644e5623e4541398edb96fc1ae720a443"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.589/agentshield_0.2.589_darwin_arm64.tar.gz"
-      sha256 "e1f135fed5babc7ce060f2135e024a42199ee2bcf4cfee6eefba3fc5a079c463"
+      url "https://aiagentlens.com/releases/v0.2.590/agentshield_0.2.590_darwin_arm64.tar.gz"
+      sha256 "54b13ca668eda39c5bba16d605c331f96cee92c662af127987579d81c3fce293"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.589/agentshield_0.2.589_linux_amd64.tar.gz"
-      sha256 "2b5934da6ccf5aa433eb8f7026714a23eb5baeda5c940dc1146a2bfe2e62ffec"
+      url "https://aiagentlens.com/releases/v0.2.590/agentshield_0.2.590_linux_amd64.tar.gz"
+      sha256 "f78f915ac9d1b13f9645b685329db80008134f45485a7662bd68495f78830dc4"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.589/agentshield_0.2.589_linux_arm64.tar.gz"
-      sha256 "a8f1fb2296b7b963d31e05497663f876534868c3e23c336522fda086904543e0"
+      url "https://aiagentlens.com/releases/v0.2.590/agentshield_0.2.590_linux_arm64.tar.gz"
+      sha256 "e5bec05396e1793bb208273efd168993283e307602d40696a0514f9bc170f081"
     end
   end
 
@@ -49,25 +49,6 @@ cask "agentshield" do
     if OS.mac?
       system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentshield"]
       system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentcompliance"]
-    end
-
-    # Copy community packs to ~/.agentshield/packs/ so the engine can find them
-    packs_src = "#{staged_path}/packs"
-    if File.directory?(packs_src)
-      packs_dst = File.expand_path("~/.agentshield/packs")
-      FileUtils.mkdir_p(packs_dst)
-      Dir.glob("#{packs_src}/*.yaml").each do |f|
-        FileUtils.cp(f, packs_dst)
-      end
-      # Community MCP packs (already embedded in binary, but copy for visibility)
-      mcp_src = "#{packs_src}/community/mcp"
-      if File.directory?(mcp_src)
-        mcp_dst = File.join(packs_dst, "mcp")
-        FileUtils.mkdir_p(mcp_dst)
-        Dir.glob("#{mcp_src}/*.yaml").each do |f|
-          FileUtils.cp(f, mcp_dst)
-        end
-      end
     end
   end
 
