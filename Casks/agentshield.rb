@@ -50,6 +50,25 @@ cask "agentshield" do
       system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentshield"]
       system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentcompliance"]
     end
+
+    # Copy community packs to ~/.agentshield/packs/ so the engine can find them
+    packs_src = "#{staged_path}/packs"
+    if File.directory?(packs_src)
+      packs_dst = File.expand_path("~/.agentshield/packs")
+      FileUtils.mkdir_p(packs_dst)
+      Dir.glob("#{packs_src}/*.yaml").each do |f|
+        FileUtils.cp(f, packs_dst)
+      end
+      # Community MCP packs (already embedded in binary, but copy for visibility)
+      mcp_src = "#{packs_src}/community/mcp"
+      if File.directory?(mcp_src)
+        mcp_dst = File.join(packs_dst, "mcp")
+        FileUtils.mkdir_p(mcp_dst)
+        Dir.glob("#{mcp_src}/*.yaml").each do |f|
+          FileUtils.cp(f, mcp_dst)
+        end
+      end
+    end
   end
 
   uninstall launchctl: "com.aiagentlens.agentshield",
