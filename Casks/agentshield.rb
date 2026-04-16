@@ -14,22 +14,22 @@ cask "agentshield" do
   on_macos do
     on_intel do
       url "https://aiagentlens.com/releases/v0.2.604/agentshield_0.2.604_darwin_amd64.tar.gz"
-      sha256 "8912a6dec083887207789b67ba4f98f694452de987d8683c099fef4a59d18bda"
+      sha256 "a26951980227de2e97c396da4e9f388f3592f961e2a3428a06c83ec35985fcca"
     end
     on_arm do
       url "https://aiagentlens.com/releases/v0.2.604/agentshield_0.2.604_darwin_arm64.tar.gz"
-      sha256 "61558a936171b5729a053a4903752dae4462c98f317d2ea927a7487e2b5383d0"
+      sha256 "bc9fc72bc76ea5937102cc0b80b4250224c6a58f64af5880c31396c4fb6f6acc"
     end
   end
 
   on_linux do
     on_intel do
       url "https://aiagentlens.com/releases/v0.2.604/agentshield_0.2.604_linux_amd64.tar.gz"
-      sha256 "daa232f663898960a045ea2d3d2d0431d418acb56bcbd4fa4b41625a8678d621"
+      sha256 "e70cfddc3e3135c3037d29243963d3cfb31e13bf1f566dbcfb1bd52dfebd3405"
     end
     on_arm do
       url "https://aiagentlens.com/releases/v0.2.604/agentshield_0.2.604_linux_arm64.tar.gz"
-      sha256 "f454da93f03bd2193007a4a073874d74a14e8bf17dbeafee7762f123dda3b76e"
+      sha256 "7bf57360ae0b4954aa855f07d4d086cf953c1cb257231efe536e24c0796c7eb4"
     end
   end
 
