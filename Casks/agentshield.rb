@@ -50,6 +50,13 @@ cask "agentshield" do
       system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentshield"]
       system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentcompliance"]
     end
+    # Note: we used to copy community packs from the tarball into
+    # ~/.agentshield/packs/ here. As of v0.2.607+, community shell and MCP
+    # packs are embedded inside the binary (packs/packs.go //go:embed), so
+    # no disk copy is needed. This also fixes a Linuxbrew bug where the
+    # postflight block was unreliable and left users without protection.
+    # ~/.agentshield/packs/ is now reserved for premium packs (from
+    # `agentshield update`) and user-custom packs.
   end
 
   uninstall launchctl: "com.aiagentlens.agentshield",
