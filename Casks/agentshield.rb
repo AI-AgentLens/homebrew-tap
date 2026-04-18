@@ -2,7 +2,7 @@ cask "agentshield" do
   name "agentshield"
   desc "Runtime security gateway and compliance scanner for LLM agents"
   homepage "https://aiagentlens.com"
-  version "0.2.632"
+  version "0.2.633"
 
   livecheck do
     skip "Auto-updated by CI on release."
@@ -13,23 +13,23 @@ cask "agentshield" do
 
   on_macos do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.632/agentshield_0.2.632_darwin_amd64.tar.gz"
-      sha256 "6b20618b23483bee402823f76ca64c9c374bab1767fb09cb4ab60a028b31bc59"
+      url "https://aiagentlens.com/releases/v0.2.633/agentshield_0.2.633_darwin_amd64.tar.gz"
+      sha256 "ebb94774f6799c25f410ace32dd7119a0c876e4ae69876df76732bdcbca46f31"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.632/agentshield_0.2.632_darwin_arm64.tar.gz"
-      sha256 "002b91da88a5159d8c072a32ef0ce74cdbd7ea64a598fa59cd804c97ea2510fc"
+      url "https://aiagentlens.com/releases/v0.2.633/agentshield_0.2.633_darwin_arm64.tar.gz"
+      sha256 "abf173997bc58f633c1b97e8f44c2468f4f20da68669087775ad8cf667af310d"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.632/agentshield_0.2.632_linux_amd64.tar.gz"
-      sha256 "25de454d6e81e3d4fad88f1280d2d2e174a2887be565f08b07b2041b5e0d7b91"
+      url "https://aiagentlens.com/releases/v0.2.633/agentshield_0.2.633_linux_amd64.tar.gz"
+      sha256 "cc99ba831b8bb84fafff90ef629c37980c16885989566f4282ac530bdcd54af2"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.632/agentshield_0.2.632_linux_arm64.tar.gz"
-      sha256 "11f5e0ed843c1a6a0255f169fb032ae5628a55e7051244714904e6a7ab193a6c"
+      url "https://aiagentlens.com/releases/v0.2.633/agentshield_0.2.633_linux_arm64.tar.gz"
+      sha256 "ba72996dc267cc30b9d00a9773f63b365017fb8e659645a2e6d1dc1568acf5ec"
     end
   end
 
@@ -50,13 +50,6 @@ cask "agentshield" do
       system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentshield"]
       system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentcompliance"]
     end
-    # Note: we used to copy community packs from the tarball into
-    # ~/.agentshield/packs/ here. As of v0.2.607+, community shell and MCP
-    # packs are embedded inside the binary (packs/packs.go //go:embed), so
-    # no disk copy is needed. This also fixes a Linuxbrew bug where the
-    # postflight block was unreliable and left users without protection.
-    # ~/.agentshield/packs/ is now reserved for premium packs (from
-    # `agentshield update`) and user-custom packs.
   end
 
   uninstall launchctl: "com.aiagentlens.agentshield",
