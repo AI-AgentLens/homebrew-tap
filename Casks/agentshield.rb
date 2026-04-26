@@ -2,7 +2,7 @@ cask "agentshield" do
   name "agentshield"
   desc "Runtime security gateway and compliance scanner for LLM agents"
   homepage "https://aiagentlens.com"
-  version "0.2.745"
+  version "0.2.746"
 
   livecheck do
     skip "Auto-updated by CI on release."
@@ -13,23 +13,23 @@ cask "agentshield" do
 
   on_macos do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.745/agentshield_0.2.745_darwin_amd64.tar.gz"
-      sha256 "4657fc5d5a429cb23f46697fe3e8d354c697681819b85ee6b7a9712a45ff20f1"
+      url "https://aiagentlens.com/releases/v0.2.746/agentshield_0.2.746_darwin_amd64.tar.gz"
+      sha256 "e06bf26b78e5633b5cfb375a8e6840e061d23af63f4c16790d66c9a18a07f204"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.745/agentshield_0.2.745_darwin_arm64.tar.gz"
-      sha256 "07861e3037f0c723fc9378fbc935e41b92a9355fba3c08efd800d9adfcd47746"
+      url "https://aiagentlens.com/releases/v0.2.746/agentshield_0.2.746_darwin_arm64.tar.gz"
+      sha256 "c2f311245ec8d13d7d3c4032e75a997e19abcddaff579445711420aa0762f611"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.745/agentshield_0.2.745_linux_amd64.tar.gz"
-      sha256 "51fb76b51412a7f6931aaa5b4acdc2ac47d2df988c9c3f1d48f540d75cd44ba1"
+      url "https://aiagentlens.com/releases/v0.2.746/agentshield_0.2.746_linux_amd64.tar.gz"
+      sha256 "d08b71e4649ac8c83496767ce2db21a60f5a849cdfeda5ee43f2f9ad540b069d"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.745/agentshield_0.2.745_linux_arm64.tar.gz"
-      sha256 "5671dde23543db148c32bb77ab4cc787a87953e535d05004d3d35c89412226f9"
+      url "https://aiagentlens.com/releases/v0.2.746/agentshield_0.2.746_linux_arm64.tar.gz"
+      sha256 "6085ca0348c7d74a5e8f2572bf3fbb51cfafc8d6789fb2473c875dd824a7a27a"
     end
   end
 
