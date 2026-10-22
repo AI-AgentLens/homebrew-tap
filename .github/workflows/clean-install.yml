@@ -1,0 +1,52 @@
+# Installs the agentshield cask on a clean GitHub-hosted Mac, the way the docs
+# tell a customer to, and checks that a known-bad action is recorded on a fresh
+# install and stopped once enforcement is on. The checks and their reasons are
+# in .github/scripts/clean-install.sh.
+#
+# Runs on every cask bump (the release job pushes Casks/agentshield.rb), nightly,
+# and by hand. Hosted macOS runners are free on a public repo, which is why this
+# lives here and not in the private Shield repo.
+name: Clean-Mac install
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Casks/agentshield.rb
+      - .github/workflows/clean-install.yml
+      - .github/scripts/clean-install.sh
+  pull_request:
+    paths:
+      - .github/workflows/clean-install.yml
+      - .github/scripts/clean-install.sh
+  schedule:
+    - cron: "40 9 * * *" # 05:40 EDT, before the morning handoff
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Releases land in bursts; only the newest cask matters to a customer.
+  group: clean-install-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install:
+    name: install (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      # Auto-update makes every install slower and tests nothing about the
+      # cask; the tap itself is still fetched fresh by `brew tap`.
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_ANALYTICS: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install and check
+        run: bash .github/scripts/clean-install.sh
