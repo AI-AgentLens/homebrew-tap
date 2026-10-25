@@ -2,7 +2,7 @@ cask "agentshield" do
   name "agentshield"
   desc "Runtime security gateway and compliance scanner for LLM agents"
   homepage "https://aiagentlens.com"
-  version "0.2.2526"
+  version "0.2.2527"
 
   livecheck do
     skip "Auto-updated by CI on release."
@@ -13,23 +13,23 @@ cask "agentshield" do
 
   on_macos do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.2526/agentshield_0.2.2526_darwin_amd64.tar.gz"
-      sha256 "fa71aac225508033790805a9d168dcd906c61c91a5ca8f11f23bbc1e26272ca8"
+      url "https://aiagentlens.com/releases/v0.2.2527/agentshield_0.2.2527_darwin_amd64.tar.gz"
+      sha256 "4dda8afdf36b33a4f2e611dc819f49e1c7dd35cff580c15182ac6cd3c05ff7bc"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.2526/agentshield_0.2.2526_darwin_arm64.tar.gz"
-      sha256 "c50f744366f33679f774f63212bc4b878f7da2843b9e48736c0655f29455259b"
+      url "https://aiagentlens.com/releases/v0.2.2527/agentshield_0.2.2527_darwin_arm64.tar.gz"
+      sha256 "a1e32252c0f0d96fdca75df7f2b7f0a19b26bbbf5db7493959657e915a1a73ba"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.2526/agentshield_0.2.2526_linux_amd64.tar.gz"
-      sha256 "e38448e0fb963b01906e8c5b44b8c4d68179ead890589ad264750dd0f61ec4ac"
+      url "https://aiagentlens.com/releases/v0.2.2527/agentshield_0.2.2527_linux_amd64.tar.gz"
+      sha256 "a55276f1f8087419987d0ddb6024866b859259523dbdb3cf5f4855cdb778122b"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.2526/agentshield_0.2.2526_linux_arm64.tar.gz"
-      sha256 "5497ba530f7abd52ba39688288a93b6036994e9280da195158b2a175b52516dd"
+      url "https://aiagentlens.com/releases/v0.2.2527/agentshield_0.2.2527_linux_arm64.tar.gz"
+      sha256 "67ff2a1bcd71a4ff7492cc3fa62ad3b45b1b93e1b61951f8eec6c0a96c457220"
     end
   end
 
@@ -55,6 +55,29 @@ cask "agentshield" do
   uninstall launchctl: "com.aiagentlens.agentshield",
             delete:    "~/Library/LaunchAgents/com.aiagentlens.agentshield.plist"
 
+  # brew uninstall --zap removes the agent hooks that agentshield setup wrote
+  # (#4491). Zap only, never uninstall: Homebrew runs uninstall stanzas and
+  # uninstall flight blocks on every upgrade and reinstall (Cask::Installer
+  # start_upgrade -> uninstall_artifacts), so removing hooks there would strip
+  # protection on each brew upgrade. Zap runs only on brew uninstall --zap,
+  # before the binary link and the Caskroom are removed, so the staged binary
+  # still runs. Each agent is non-fatal: a managed host refuses --disable and
+  # keeps its hooks, which belong to the MDM. ~/.agentshield is kept on
+  # purpose: it holds the audit log, which is evidence.
+  zap script: {
+    executable:   "/bin/sh",
+    args:         ["-c", <<~'SH', "#{staged_path}/agentshield"],
+      bin="$0"
+      PATH="$(dirname "$bin"):$PATH"; export PATH
+      for agent in claude-code gemini-cli codex copilot-cli windsurf cursor openclaw mcp; do
+        echo "==> agentshield setup $agent --disable"
+        "$bin" setup "$agent" --disable || echo "    not removed (exit $?); on a managed host your administrator removes it"
+      done
+      echo "==> ~/.agentshield kept (policy and audit log)"
+    SH
+    must_succeed: false,
+  }
+
   caveats <<~EOS
     Two tools installed:
       agentshield      — Runtime security gateway for AI agents
@@ -63,5 +86,9 @@ cask "agentshield" do
     Quick start:
       agentshield setup
       agentshield login
+
+    To uninstall and remove the agent hooks setup wrote:
+      brew uninstall --zap --cask agentshield
+    A plain brew uninstall leaves the hooks. ~/.agentshield (audit log) is kept.
   EOS
 end
