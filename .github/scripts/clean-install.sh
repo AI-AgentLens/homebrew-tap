@@ -200,17 +200,58 @@ PY
 )
 info "hook wall time" "$ms"
 
-# --- 8. Uninstall (report only) ---------------------------------------------------
-# Reported, not failed: what should happen to the agent's hook entry on
-# uninstall is still an open question.
+# --- 8. Uninstall with --zap removes the hooks (AI_Agent_Shield#4491) -------------
+# A plain `brew uninstall` leaves the hooks setup wrote, and Claude Code then
+# reports a hook error on every tool call and runs the tool unchecked. The
+# cask's zap stanza runs `agentshield setup <agent> --disable` for every agent.
+# The removal lives in zap, never in uninstall: Homebrew runs uninstall steps on
+# every `brew upgrade`, so removing hooks there would strip protection on each
+# upgrade. ~/.agentshield is kept on purpose (the audit log is evidence).
+# Not checked yet: that `brew upgrade` between two releases that both carry the
+# stanza keeps the hooks (follow-up).
+
+# hooks_naming_agentshield: hook entries in ~/.claude/settings.json, any event,
+# whose command or args name agentshield.
+hooks_naming_agentshield() {
+  python3 - "$HOME/.claude/settings.json" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except FileNotFoundError:
+    print(0); sys.exit()
+except Exception as e:
+    print("unreadable:" + type(e).__name__); sys.exit()
+n = 0
+for groups in (d.get("hooks") or {}).values():
+    for g in groups or []:
+        for h in (g or {}).get("hooks", []) or []:
+            text = " ".join([str(h.get("command", ""))] + [str(a) for a in h.get("args", []) or []])
+            n += "agentshield" in text
+print(n)
+PY
+}
+
 if [ "$NO_BREW" = 0 ]; then
   bin=$(command -v agentshield)
-  if brew uninstall --cask agentshield >/dev/null 2>&1; then
-    left=$(grep -c agentshield "$HOME/.claude/settings.json" 2>/dev/null)
+  before=$(hooks_naming_agentshield)
+  # Control: the count below is only meaningful if there was a hook to remove.
+  if [ "$before" = "0" ] || [ "${before#unreadable}" != "$before" ]; then
+    bad "zap removes hooks" "before uninstall, settings.json had ${before} hook(s) naming agentshield; the check would prove nothing"
+  elif brew uninstall --zap --cask agentshield > "$WORK/zap.out" 2>&1; then
+    after=$(hooks_naming_agentshield)
     if [ -e "$bin" ]; then gone="still there"; else gone="removed"; fi
-    info "uninstall" "binary $gone; settings.json still names agentshield on ${left:-0} line(s)"
+    if [ "$after" = "0" ]; then
+      ok "zap removes hooks" "brew uninstall --zap: $before hook(s) naming agentshield before, 0 after; binary $gone"
+    else
+      bad "zap removes hooks" "brew uninstall --zap left $after hook(s) naming agentshield (had $before); binary $gone. $(grep -E 'setup|not removed' "$WORK/zap.out" | head -3 | tr '\n' ' ')"
+    fi
+    if [ -d "$HOME/.agentshield" ]; then
+      ok "zap keeps ~/.agentshield" "the audit log is kept on purpose"
+    else
+      bad "zap keeps ~/.agentshield" "~/.agentshield was removed; it holds the audit log"
+    fi
   else
-    info "uninstall" "brew uninstall --cask agentshield failed"
+    bad "zap removes hooks" "brew uninstall --zap --cask agentshield failed: $(tail -3 "$WORK/zap.out" | tr '\n' ' ')"
   fi
 fi
 
