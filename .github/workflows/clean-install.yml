@@ -15,10 +15,12 @@ on:
       - Casks/agentshield.rb
       - .github/workflows/clean-install.yml
       - .github/scripts/clean-install.sh
+      - .github/scripts/homebrew7.sh
   pull_request:
     paths:
       - .github/workflows/clean-install.yml
       - .github/scripts/clean-install.sh
+      - .github/scripts/homebrew7.sh
   schedule:
     - cron: "40 9 * * *" # 05:40 EDT, before the morning handoff
   workflow_dispatch:
@@ -49,4 +51,48 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install and check
+        run: bash .github/scripts/clean-install.sh
+
+  # The legs above run the Homebrew the runner image ships, with auto-update
+  # off. Since Homebrew 6.0.0 a third-party tap is untrusted until `brew trust`
+  # (https://docs.brew.sh/Tap-Trust), so this leg updates Homebrew first and
+  # records what each install spelling does on a current Homebrew. Each case
+  # gets its own fresh runner, so no case sees another's tap or trust.
+  #   qualified, tap-then-name: an install with no trust, recorded verbatim in
+  #     the step summary. Not judged (continue-on-error).
+  #   trusted: trust the tap, then every check in clean-install.sh. Judged.
+  homebrew7:
+    name: homebrew 7 (${{ matrix.case }})
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [qualified, tap-then-name, trusted]
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      # No HOMEBREW_NO_AUTO_UPDATE: an un-updated Homebrew is what the other
+      # legs already test.
+      HOMEBREW_NO_ANALYTICS: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - name: Update Homebrew and require 7 or later
+        run: bash .github/scripts/homebrew7.sh update
+      - name: Install without trust (recorded, not judged)
+        if: matrix.case != 'trusted'
+        continue-on-error: true
+        run: bash .github/scripts/homebrew7.sh measure ${{ matrix.case }}
+      - name: Trust the tap
+        if: matrix.case == 'trusted'
+        # The default shell here is `bash -e` without pipefail, so the exit
+        # status is kept by hand: a failed trust must fail the step.
+        run: |
+          brew tap AI-AgentLens/tap
+          rc=0
+          brew trust ai-agentlens/tap > "$RUNNER_TEMP/trust.log" 2>&1 || rc=$?
+          cat "$RUNNER_TEMP/trust.log"
+          { echo "### \`brew trust ai-agentlens/tap\` exited $rc"; echo '```'; cat "$RUNNER_TEMP/trust.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
+      - name: Install and check
+        if: matrix.case == 'trusted'
         run: bash .github/scripts/clean-install.sh
