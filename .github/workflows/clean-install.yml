@@ -58,17 +58,21 @@ jobs:
   # (https://docs.brew.sh/Tap-Trust), so this leg updates Homebrew first and
   # records what each install spelling does on a current Homebrew. Each case
   # gets its own fresh runner, so no case sees another's tap or trust.
-  #   qualified, tap-then-name: an install with no trust, recorded verbatim in
-  #     the step summary. Not judged (continue-on-error).
-  #   trusted: trust the tap, then every check in clean-install.sh. Judged.
+  #   qualified, tap-then-name: a cask install with no trust, recorded
+  #     verbatim in the step summary. Not judged (continue-on-error).
+  #   oss-qualified, oss-tap-then-name: the same for the open-source formula
+  #     in AI-AgentLens/oss, which builds from source with Go. Not judged.
+  #   trusted: tap and trust ai-agentlens/tap, then every check in
+  #     clean-install.sh, which installs with the documented spelling. Judged.
   homebrew7:
     name: homebrew 7 (${{ matrix.case }})
     strategy:
       fail-fast: false
       matrix:
-        case: [qualified, tap-then-name, trusted]
+        case: [qualified, tap-then-name, oss-qualified, oss-tap-then-name, trusted]
     runs-on: macos-latest
-    timeout-minutes: 30
+    # The formula cases install Go and compile; the cask cases take about a minute.
+    timeout-minutes: 45
     env:
       # No HOMEBREW_NO_AUTO_UPDATE: an un-updated Homebrew is what the other
       # legs already test.
@@ -81,6 +85,13 @@ jobs:
       - name: Install without trust (recorded, not judged)
         if: matrix.case != 'trusted'
         continue-on-error: true
+        env:
+          MEASURE_TIMEOUT: ${{ startsWith(matrix.case, 'oss-') && '1800' || '900' }}
+          # The formula install asks to confirm the Go dependency (Homebrew 7
+          # ask mode). MEASURE_NO_ASK skips the prompt, the path a person takes
+          # by pressing y, so the build itself is measured (run 41224946179
+          # recorded the unanswered prompt exiting 1).
+          MEASURE_NO_ASK: ${{ startsWith(matrix.case, 'oss-') && '1' || '' }}
         run: bash .github/scripts/homebrew7.sh measure ${{ matrix.case }}
       - name: Trust the tap
         if: matrix.case == 'trusted'

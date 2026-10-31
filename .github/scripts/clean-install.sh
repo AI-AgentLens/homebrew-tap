@@ -84,16 +84,24 @@ if [ "$NO_BREW" = 0 ]; then
   ok "clean machine" "no agentshield on PATH, no ~/.agentshield"
 
   # --- 1. Install, exactly as the docs say -------------------------------------
+  # The one line every install page shows: tap-qualified, with no `brew tap`
+  # and no `brew trust` before it. Since Homebrew 6 a third-party tap is
+  # untrusted until trusted; this spelling taps the repo and trusts just this
+  # cask, while `brew tap` followed by the bare name is refused
+  # (AI-AgentLens/AI_Agent_Shield#4667). Change it only together with the docs.
+  install=(brew install --cask ai-agentlens/tap/agentshield)
+  if brew tap 2>/dev/null | grep -qix 'ai-agentlens/tap'; then tapped="already tapped"; else tapped="not tapped"; fi
+  info "homebrew" "$(brew --version 2>/dev/null | head -1); ai-agentlens/tap $tapped before the install"
   t0=$(date +%s)
-  brew tap AI-AgentLens/tap && brew trust AI-AgentLens/tap 2>/dev/null; brew install --cask agentshield
+  "${install[@]}"
   rc=$?
   secs=$(( $(date +%s) - t0 ))
   if [ "$rc" -ne 0 ]; then
-    bad "install" "brew install --cask agentshield exited $rc after ${secs}s"
+    bad "install" "\`${install[*]}\` exited $rc after ${secs}s"
     exit 1
   fi
   installed=$(brew list --cask --versions agentshield 2>/dev/null | awk '{print $NF}')
-  ok "install" "cask ${installed:-?} in ${secs}s"
+  ok "install" "\`${install[*]}\`: cask ${installed:-?} in ${secs}s"
   # On a cask bump this runs on the pushed commit; a newer bump may already have
   # landed, so a difference is reported, not failed.
   if [ -f Casks/agentshield.rb ]; then
