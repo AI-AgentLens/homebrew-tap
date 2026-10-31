@@ -91,11 +91,20 @@ measure() {
   # Run under a pseudo-terminal (script) so a prompt, if Homebrew asks one,
   # shows up as it would in a customer's terminal. stdin is empty, so a prompt
   # reads end-of-file instead of waiting; the alarm bounds anything that hangs.
+  # MEASURE_ANSWER, when set, is typed into the terminal instead, the way a
+  # person answers the prompt. Homebrew 7 asks "Do you want to proceed with the
+  # installation? [y/n]" when an install also brings dependencies (the formula
+  # brings Go), and an unanswered prompt exits 1 before anything is built.
   raw="$WORK/raw.log"
   limit=${MEASURE_TIMEOUT:-900}
   t0=$(date +%s)
-  perl -e 'alarm shift; exec @ARGV' "$limit" \
-    script -q "$raw" /bin/sh -c "$cmd; rc=\$?; echo; echo install-exit=\$rc" < /dev/null
+  if [ -n "${MEASURE_ANSWER:-}" ]; then
+    printf '%s\n' "$MEASURE_ANSWER" | perl -e 'alarm shift; exec @ARGV' "$limit" \
+      script -q "$raw" /bin/sh -c "$cmd; rc=\$?; echo; echo install-exit=\$rc"
+  else
+    perl -e 'alarm shift; exec @ARGV' "$limit" \
+      script -q "$raw" /bin/sh -c "$cmd; rc=\$?; echo; echo install-exit=\$rc" < /dev/null
+  fi
   secs=$(( $(date +%s) - t0 ))
   # Split carriage-return progress updates into lines, and drop terminal
   # escapes and the ^D the terminal echoes for the empty stdin.
@@ -104,6 +113,9 @@ measure() {
   grep -v '^install-exit=' "$WORK/install.log" > "$WORK/out.log"
 
   say "### Install without trust: \`$cmd\`" ""
+  if [ -n "${MEASURE_ANSWER:-}" ]; then
+    say "A confirmation prompt, if Homebrew showed one, was answered with \`$MEASURE_ANSWER\`." ""
+  fi
   if [ -n "$rc" ]; then
     say "Exit code: **$rc**, after $secs s" ""
   else
