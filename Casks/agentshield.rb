@@ -2,7 +2,7 @@ cask "agentshield" do
   name "agentshield"
   desc "Runtime security gateway and compliance scanner for LLM agents"
   homepage "https://aiagentlens.com"
-  version "0.2.2605"
+  version "0.2.2606"
 
   livecheck do
     skip "Auto-updated by CI on release."
@@ -13,42 +13,56 @@ cask "agentshield" do
 
   on_macos do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.2605/agentshield_0.2.2605_darwin_amd64.tar.gz"
-      sha256 "9472a756dc3167cb83f2d1f11a1fc4d3de07525bee1582140a015873a37bf173"
+      url "https://aiagentlens.com/releases/v0.2.2606/agentshield_0.2.2606_darwin_amd64.tar.gz"
+      sha256 "3348e5838c669d0b00bcfd805b89484bc6e757422b53fe9e5ae89d57de136992"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.2605/agentshield_0.2.2605_darwin_arm64.tar.gz"
-      sha256 "1cbe124f1e341aedd7fb6fbbc76e468796a8da0425040d0aaca07609140c0eb9"
+      url "https://aiagentlens.com/releases/v0.2.2606/agentshield_0.2.2606_darwin_arm64.tar.gz"
+      sha256 "3e33cdf179ee5c0c0e9f95a10d095b3745d6cf21b26af64284cd2f97328534db"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://aiagentlens.com/releases/v0.2.2605/agentshield_0.2.2605_linux_amd64.tar.gz"
-      sha256 "763197e5b7d331720633ce9ae57b757821da5e0f50fa9adb65c188fa83d91f0a"
+      url "https://aiagentlens.com/releases/v0.2.2606/agentshield_0.2.2606_linux_amd64.tar.gz"
+      sha256 "8c987a4f25712ec64bc70e0d830e4e0e3f8a90e088da4cfbc3984a8666ab57d4"
     end
     on_arm do
-      url "https://aiagentlens.com/releases/v0.2.2605/agentshield_0.2.2605_linux_arm64.tar.gz"
-      sha256 "5e0c3b8f573e942f3e99f35c28bf08eca0956925cec6a3b1ba6e555011a2e7e4"
+      url "https://aiagentlens.com/releases/v0.2.2606/agentshield_0.2.2606_linux_arm64.tar.gz"
+      sha256 "83cffe11e75ef006bc09e5b28eda96cb17dfe9d876bb7fe1f6cdbc719da2a5ac"
     end
   end
 
   # Stop the heartbeat daemon before upgrading so the old binary doesn't keep
   # running as a zombie after brew replaces it.
-  preflight do
-    if OS.mac?
-      plist = File.expand_path("~/Library/LaunchAgents/com.aiagentlens.agentshield.plist")
-      if File.exist?(plist)
-        system_command "/bin/launchctl", args: ["bootout", "gui/#{Process.uid}/com.aiagentlens.agentshield"], print_stderr: false
-        File.delete(plist) if File.exist?(plist)
+  #
+  # Structured steps, not Ruby flight blocks: Homebrew 7.0.0 deprecated
+  # preflight/postflight (Homebrew/brew#23729) and the next minor release turns
+  # that into an error. These steps need Homebrew >= 6.0.16; older ones refuse
+  # to load the cask. They run in Homebrew's sandbox with a throwaway HOME, so
+  # home paths use base: :home (a literal ~ would name the throwaway HOME), and
+  # the uid comes from id -u because a steps block allows no Ruby interpolation.
+  # must_succeed: false keeps system_command's ignore-failure behaviour.
+  preflight_steps do
+    on_macos do
+      if_path_exists "Library/LaunchAgents/com.aiagentlens.agentshield.plist", base: :home do
+        run "/bin/sh",
+            args:         ["-c", "exec /bin/launchctl bootout gui/$(/usr/bin/id -u)/com.aiagentlens.agentshield"],
+            must_succeed: false,
+            print_stderr: false
+        remove "Library/LaunchAgents/com.aiagentlens.agentshield.plist", base: :home
       end
     end
   end
 
-  postflight do
-    if OS.mac?
-      system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentshield"]
-      system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agentcompliance"]
+  postflight_steps do
+    on_macos do
+      run "/usr/bin/xattr",
+          args:         ["-dr", "com.apple.quarantine", "{{staged_path}}/agentshield"],
+          must_succeed: false
+      run "/usr/bin/xattr",
+          args:         ["-dr", "com.apple.quarantine", "{{staged_path}}/agentcompliance"],
+          must_succeed: false
     end
   end
 
