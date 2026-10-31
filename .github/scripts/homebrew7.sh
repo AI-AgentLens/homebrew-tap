@@ -41,6 +41,8 @@ fenced() {
 major_of() { printf '%s\n' "$1" | sed -n 's/^Homebrew \([0-9][0-9]*\)\..*/\1/p'; }
 
 update() {
+  # The image's own Homebrew, which the other legs run as is.
+  brew --version > "$WORK/image-version.txt" 2>&1
   brew update > "$WORK/update.log" 2>&1
   rc=$?
   cat "$WORK/update.log"
@@ -51,6 +53,7 @@ update() {
 
   say "### Homebrew this leg ran" ""
   fenced "$WORK/version.txt" 5
+  say "Before \`brew update\` (the runner image's Homebrew): \`$(head -1 "$WORK/image-version.txt")\`" ""
   say "\`brew update\` exited $rc. Its lines about trust:" ""
   grep -i 'trust' "$WORK/update.log" > "$WORK/update-trust.txt"
   fenced "$WORK/update-trust.txt" 20
@@ -103,7 +106,8 @@ measure() {
   fenced "$WORK/relevant.txt" 40
 
   # What the install left behind, and whether the upgrade path can load the cask.
-  installed=$(brew list --cask --versions agentshield 2>&1 < /dev/null | head -1)
+  # stderr dropped: Homebrew prints cask deprecation warnings there.
+  installed=$(brew list --cask --versions agentshield 2>/dev/null < /dev/null | head -1)
   brew trust < /dev/null > "$WORK/trusted.txt" 2>&1
   brew untrust < /dev/null > "$WORK/untrusted.txt" 2>&1
   brew upgrade --cask --dry-run agentshield < /dev/null > "$WORK/upgrade.txt" 2>&1
