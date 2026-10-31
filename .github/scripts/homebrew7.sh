@@ -26,12 +26,14 @@ set -u
 
 SUMMARY=${GITHUB_STEP_SUMMARY:-/dev/null}
 WORK=$(mktemp -d)
-say() { printf '%s\n' "$@" >> "$SUMMARY"; }
+# Everything written to the step summary is also printed to the job log: the
+# summary cannot be read with `gh run view --log`, the log can.
+say() { printf '%s\n' "$@" | tee -a "$SUMMARY"; }
 
 # fenced <file> <max lines>: the file's lines in a code block, verbatim.
 fenced() {
   say '```'
-  if [ -s "$1" ]; then head -n "$2" "$1" >> "$SUMMARY"; else say "(no output)"; fi
+  if [ -s "$1" ]; then head -n "$2" "$1" | tee -a "$SUMMARY"; else say "(no output)"; fi
   say '```'
 }
 
@@ -42,6 +44,7 @@ update() {
   brew update > "$WORK/update.log" 2>&1
   rc=$?
   cat "$WORK/update.log"
+  echo
   brew --version > "$WORK/version.txt" 2>&1
   ver=$(head -1 "$WORK/version.txt")
   major=$(major_of "$ver")
@@ -120,7 +123,6 @@ measure() {
   fenced "$WORK/out.log" 200
   say "</details>" ""
 
-  cat "$WORK/out.log"
   echo "install exit code: $rc"
   exit "$rc"
 }
