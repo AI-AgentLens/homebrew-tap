@@ -9,18 +9,22 @@
 #
 # What it is NOT for: judging the untrusted installs. `measure` records what
 # Homebrew does, verbatim; the workflow runs it with continue-on-error. The
-# trusted install is judged by clean-install.sh.
+# documented install is judged by clean-install.sh.
 #
 # Usage:
 #   homebrew7.sh update            brew update, print the version, and fail
 #                                  unless it is Homebrew 7 or later
 #   homebrew7.sh measure <case>    one install without trust, on a Mac that has
-#                                  never tapped ai-agentlens/tap; exits with the
-#                                  install's exit status
+#                                  never tapped an ai-agentlens tap; exits with
+#                                  the install's exit status
 #
-# Cases (the two install spellings in use):
-#   qualified       brew install --cask ai-agentlens/tap/agentshield
-#   tap-then-name   brew tap AI-AgentLens/tap && brew install --cask agentshield
+# Cases. The cask, from AI-AgentLens/tap (prebuilt binaries):
+#   qualified          brew install --cask ai-agentlens/tap/agentshield
+#   tap-then-name      brew tap AI-AgentLens/tap && brew install --cask agentshield
+# The open-source formula, from AI-AgentLens/oss (built from source with Go,
+# so give it a longer MEASURE_TIMEOUT):
+#   oss-qualified      brew install ai-agentlens/oss/agentshield
+#   oss-tap-then-name  brew tap AI-AgentLens/oss && brew install agentshield
 
 set -u
 
@@ -70,14 +74,17 @@ update() {
 
 measure() {
   case "${1:-}" in
-    qualified)     cmd='brew install --cask ai-agentlens/tap/agentshield' ;;
-    tap-then-name) cmd='brew tap AI-AgentLens/tap && brew install --cask agentshield' ;;
+    qualified)         kind=cask;    cmd='brew install --cask ai-agentlens/tap/agentshield' ;;
+    tap-then-name)     kind=cask;    cmd='brew tap AI-AgentLens/tap && brew install --cask agentshield' ;;
+    oss-qualified)     kind=formula; cmd='brew install ai-agentlens/oss/agentshield' ;;
+    oss-tap-then-name) kind=formula; cmd='brew tap AI-AgentLens/oss && brew install agentshield' ;;
     *) echo "unknown case '${1:-}'"; exit 2 ;;
   esac
 
-  # A leftover tap or binary would make this measure the runner, not a fresh Mac.
-  if brew tap | grep -qi '^ai-agentlens/' || command -v agentshield >/dev/null 2>&1; then
-    say "**FAIL: ai-agentlens/tap or agentshield is already present; this is not a fresh Mac.**"
+  # A leftover tap, binary or config would make this measure the runner, not a
+  # fresh Mac.
+  if brew tap | grep -qi '^ai-agentlens/' || command -v agentshield >/dev/null 2>&1 || [ -e "$HOME/.agentshield" ]; then
+    say "**FAIL: an ai-agentlens tap, agentshield or ~/.agentshield is already present; this is not a fresh Mac.**"
     exit 2
   fi
 
@@ -86,8 +93,10 @@ measure() {
   # reads end-of-file instead of waiting; the alarm bounds anything that hangs.
   raw="$WORK/raw.log"
   limit=${MEASURE_TIMEOUT:-900}
+  t0=$(date +%s)
   perl -e 'alarm shift; exec @ARGV' "$limit" \
     script -q "$raw" /bin/sh -c "$cmd; rc=\$?; echo; echo install-exit=\$rc" < /dev/null
+  secs=$(( $(date +%s) - t0 ))
   # Split carriage-return progress updates into lines, and drop terminal
   # escapes and the ^D the terminal echoes for the empty stdin.
   perl -pe 's/\e\[[0-9;?]*[A-Za-z]//g; s/\^D\x08*//g; s/\r(?!\n)/\n/g; s/\r//g' "$raw" | grep -v '^[[:space:]]*$' > "$WORK/install.log"
@@ -96,35 +105,52 @@ measure() {
 
   say "### Install without trust: \`$cmd\`" ""
   if [ -n "$rc" ]; then
-    say "Exit code: **$rc**" ""
+    say "Exit code: **$rc**, after $secs s" ""
   else
     rc=124
     say "Exit code: **none**: the command did not finish within $limit s (the output below ends where it stopped)" ""
   fi
   say "Lines about trust, refusals, errors and the install result, verbatim:" ""
-  grep -iE 'trust|refus|error|warning|tapp|install|caveat|==>' "$WORK/out.log" > "$WORK/relevant.txt"
-  fenced "$WORK/relevant.txt" 40
+  grep -iE 'trust|refus|error|warning|fail|denied|permitted|tapp|install|caveat|==>' "$WORK/out.log" > "$WORK/relevant.txt"
+  fenced "$WORK/relevant.txt" 60
 
-  # What the install left behind, and whether the upgrade path can load the cask.
+  # What the install left behind, and whether the upgrade path can load it.
   # stderr dropped: Homebrew prints cask deprecation warnings there.
-  installed=$(brew list --cask --versions agentshield 2>/dev/null < /dev/null | head -1)
+  installed=$(brew list --$kind --versions agentshield 2>/dev/null < /dev/null | head -1)
   brew trust < /dev/null > "$WORK/trusted.txt" 2>&1
   brew untrust < /dev/null > "$WORK/untrusted.txt" 2>&1
-  brew upgrade --cask --dry-run agentshield < /dev/null > "$WORK/upgrade.txt" 2>&1
+  brew upgrade --$kind --dry-run agentshield < /dev/null > "$WORK/upgrade.txt" 2>&1
   up_rc=$?
   say "After the install:" ""
-  say "\`brew list --cask --versions agentshield\`:"
+  say "\`brew list --$kind --versions agentshield\`:"
   printf '%s\n' "${installed:-(nothing)}" > "$WORK/installed.txt"
   fenced "$WORK/installed.txt" 1
   say "\`brew trust\` (lists trusted entries):"
   fenced "$WORK/trusted.txt" 15
   say "\`brew untrust\` (lists untrusted entries):"
   fenced "$WORK/untrusted.txt" 15
-  say "\`brew upgrade --cask --dry-run agentshield\` exited $up_rc:"
+  say "\`brew upgrade --$kind --dry-run agentshield\` exited $up_rc:"
   fenced "$WORK/upgrade.txt" 10
 
-  say "<details><summary>Full install output ($(wc -l < "$WORK/out.log" | tr -d ' ') lines)</summary>" ""
-  fenced "$WORK/out.log" 200
+  # An install that exited 0 has to leave a binary that runs.
+  if [ "$rc" = 0 ]; then
+    bin=$(command -v agentshield)
+    agentshield version < /dev/null > "$WORK/version.txt" 2>&1
+    v_rc=$?
+    say "\`agentshield version\` (${bin:-not on PATH}) exited $v_rc:"
+    fenced "$WORK/version.txt" 5
+    # The formula's post_install copies its rule packs into ~/.agentshield/packs.
+    if [ "$kind" = formula ]; then
+      n=$(find "$HOME/.agentshield/packs" -name '*.yaml' 2>/dev/null | wc -l | tr -d ' ')
+      say "\`~/.agentshield/packs\` after the install holds $n .yaml file(s)." ""
+    fi
+  fi
+
+  # A source build fails at the end of a long output, so show the tail. The job
+  # log has every line: `script` echoes the install as it runs.
+  tail -n 200 "$WORK/out.log" > "$WORK/out-tail.log"
+  say "<details><summary>Install output ($(wc -l < "$WORK/out.log" | tr -d ' ') lines, the last 200 at most)</summary>" ""
+  fenced "$WORK/out-tail.log" 200
   say "</details>" ""
 
   echo "install exit code: $rc"
@@ -134,5 +160,5 @@ measure() {
 case "${1:-}" in
   update)  update ;;
   measure) measure "${2:-}" ;;
-  *) echo "usage: $0 update | measure <qualified|tap-then-name>"; exit 2 ;;
+  *) echo "usage: $0 update | measure <qualified|tap-then-name|oss-qualified|oss-tap-then-name>"; exit 2 ;;
 esac
