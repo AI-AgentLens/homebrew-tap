@@ -87,10 +87,11 @@ jobs:
         continue-on-error: true
         env:
           MEASURE_TIMEOUT: ${{ startsWith(matrix.case, 'oss-') && '1800' || '900' }}
-          # The formula's install asks to confirm the Go dependency; answer it
-          # as a person would, so the build itself is measured. Without an
-          # answer it exits 1 at the prompt (run 41224946179).
-          MEASURE_ANSWER: ${{ startsWith(matrix.case, 'oss-') && 'y' || '' }}
+          # The formula install asks to confirm the Go dependency (Homebrew 7
+          # ask mode). MEASURE_NO_ASK skips the prompt, the path a person takes
+          # by pressing y, so the build itself is measured (run 41224946179
+          # recorded the unanswered prompt exiting 1).
+          MEASURE_NO_ASK: ${{ startsWith(matrix.case, 'oss-') && '1' || '' }}
         run: bash .github/scripts/homebrew7.sh measure ${{ matrix.case }}
       - name: Trust the tap
         if: matrix.case == 'trusted'

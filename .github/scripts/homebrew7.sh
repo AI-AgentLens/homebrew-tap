@@ -91,20 +91,20 @@ measure() {
   # Run under a pseudo-terminal (script) so a prompt, if Homebrew asks one,
   # shows up as it would in a customer's terminal. stdin is empty, so a prompt
   # reads end-of-file instead of waiting; the alarm bounds anything that hangs.
-  # MEASURE_ANSWER, when set, is typed into the terminal instead, the way a
-  # person answers the prompt. Homebrew 7 asks "Do you want to proceed with the
-  # installation? [y/n]" when an install also brings dependencies (the formula
-  # brings Go), and an unanswered prompt exits 1 before anything is built.
+  #
+  # Homebrew 7 asks "Do you want to proceed with the installation? [y/n]"
+  # when the plan includes dependencies (the formula brings Go). It reads one
+  # keypress from the terminal and exits 1 at end of input (Library/Homebrew/
+  # ask.rb), so an empty stdin stops it before anything is built: run
+  # 41224946179 recorded exactly that. A person presses y. MEASURE_NO_ASK=1
+  # sets HOMEBREW_NO_ASK, which skips the prompt; install.rb ignores the
+  # prompt's result, so that is the same path as pressing y.
   raw="$WORK/raw.log"
   limit=${MEASURE_TIMEOUT:-900}
   t0=$(date +%s)
-  if [ -n "${MEASURE_ANSWER:-}" ]; then
-    printf '%s\n' "$MEASURE_ANSWER" | perl -e 'alarm shift; exec @ARGV' "$limit" \
-      script -q "$raw" /bin/sh -c "$cmd; rc=\$?; echo; echo install-exit=\$rc"
-  else
-    perl -e 'alarm shift; exec @ARGV' "$limit" \
-      script -q "$raw" /bin/sh -c "$cmd; rc=\$?; echo; echo install-exit=\$rc" < /dev/null
-  fi
+  if [ "${MEASURE_NO_ASK:-}" = 1 ]; then export HOMEBREW_NO_ASK=1; fi
+  perl -e 'alarm shift; exec @ARGV' "$limit" \
+    script -q "$raw" /bin/sh -c "$cmd; rc=\$?; echo; echo install-exit=\$rc" < /dev/null
   secs=$(( $(date +%s) - t0 ))
   # Split carriage-return progress updates into lines, and drop terminal
   # escapes and the ^D the terminal echoes for the empty stdin.
@@ -113,8 +113,8 @@ measure() {
   grep -v '^install-exit=' "$WORK/install.log" > "$WORK/out.log"
 
   say "### Install without trust: \`$cmd\`" ""
-  if [ -n "${MEASURE_ANSWER:-}" ]; then
-    say "A confirmation prompt, if Homebrew showed one, was answered with \`$MEASURE_ANSWER\`." ""
+  if [ "${MEASURE_NO_ASK:-}" = 1 ]; then
+    say "Run with \`HOMEBREW_NO_ASK=1\`: no confirmation prompt, the same path as a person pressing y at Homebrew 7's \"proceed with the installation?\" prompt." ""
   fi
   if [ -n "$rc" ]; then
     say "Exit code: **$rc**, after $secs s" ""
